@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hospital Inventory Management</title>
+    <style>
+        /* General Styles */
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            margin: 0;
+        }
+
+        header {
+            width: 100%;
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header .logo {
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        header .navbar {
+            display: flex;
+            gap: 20px;
+        }
+
+        header .navbar a {
+            color: white;
+            text-decoration: none;
+            padding: 10px 15px;
+            background-color: #e74c3c;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        header .navbar a:hover {
+            background-color: #c0392b;
+        }
+
+        header .search-bar {
+            padding: 5px 10px;
+            width: 200px;
+        }
+
+        .main-content {
+            padding: 20px;
+            background-color: #ecf0f1;
+            flex-grow: 1;
+        }
+
+        .section {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f4f4f4;
+        }
+
+        .order-card {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            width: 250px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .low-stock-alert {
+            color: #e74c3c;
+            font-weight: bold;
+        }
+
+        .search-results {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .search-results table {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">Hospital Inventory</div>
+        <div class="navbar">
+            <a onclick="showSection('dashboard')">Dashboard</a>
+            <a onclick="showSection('inventory')">Inventory</a>
+            <a onclick="showSection('orders')">Orders</a>
+        </div>
+        <input type="text" class="search-bar" id="searchInput" placeholder="Search inventory..." onkeyup="searchData()">
+    </header>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Dashboard Section -->
+        <div id="dashboard" class="section">
+            <h2>Dashboard</h2>
+            <h3>Inventory Overview</h3>
+            <table id="dashboardInventoryTable">
+                <thead></thead>
+                <tbody></tbody>
+            </table>
+
+            <h3>Recent Orders</h3>
+            <div id="dashboard-orders" class="order-card"></div>
+        </div>
+
+        <!-- Inventory Section -->
+        <div id="inventory" class="section">
+            <h2>Inventory</h2>
+            <div id="inventory-tables"></div>
+        </div>
+
+        <!-- Orders Section -->
+        <div id="orders" class="section">
+            <h2>Orders</h2>
+            <div id="order-list" class="order-card"></div>
+        </div>
+
+        <!-- Search Results -->
+        <div id="searchResults" class="search-results" style="display: none;">
+            <h3>Search Results</h3>
+            <table>
+                <thead></thead>
+                <tbody id="searchTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let inventoryData = {}; // To store inventory data globally
+        let orders = [];        // To store orders
+
+        // Fetch inventory data
+        fetch("http://54.210.222.222/getData.php")
+            .then(response => response.json())
+            .then(data => {
+                inventoryData = data;
+                displayInventoryData();
+                showSection('dashboard');
+            })
+            .catch(error => console.error('Error fetching inventory data:', error));
+
+        function showSection(sectionId) {
+            document.querySelectorAll('.section').forEach(section => section.style.display = 'none');
+            document.getElementById(sectionId).style.display = 'block';
+        }
+
+        function displayInventoryData() {
+            const inventoryTables = document.getElementById('inventory-tables');
+            const dashboardTable = document.getElementById('dashboardInventoryTable');
+            inventoryTables.innerHTML = '';
+            dashboardTable.innerHTML = '<thead><tr><th>Name</th><th>Category</th><th>Stock</th></tr></thead>';
+
+            const tbody = document.createElement('tbody');
+            for (let category in inventoryData) {
+                const categoryTable = document.createElement('table');
+                const categoryHeaders = Object.keys(inventoryData[category][0]);
+                const headerRow = document.createElement('tr');
+
+                categoryHeaders.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    headerRow.appendChild(th);
+                });
+
+                categoryTable.appendChild(headerRow);
+
+                inventoryData[category].forEach(item => {
+                    const row = document.createElement('tr');
+                    categoryHeaders.forEach(header => {
+                        const td = document.createElement('td');
+                        td.textContent = item[header];
+                        row.appendChild(td);
+                    });
+                    categoryTable.appendChild(row);
+
+                    // Add a summary to the dashboard
+                    const dashboardRow = document.createElement('tr');
+                    dashboardRow.innerHTML = `<td>${item.name}</td><td>${category}</td><td>${item.stock}</td>`;
+                    tbody.appendChild(dashboardRow);
+                });
+
+                inventoryTables.appendChild(categoryTable);
+            }
+            dashboardTable.appendChild(tbody);
+        }
+
+        function searchData() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const searchResults = document.getElementById('searchResults');
+            const searchBody = document.getElementById('searchTableBody');
+            searchBody.innerHTML = '';
+            searchResults.style.display = 'none';
+
+            for (let category in inventoryData) {
+                inventoryData[category].forEach(item => {
+                    if (item.name.toLowerCase().includes(query)) {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `<td>${item.name}</td><td>${category}</td><td>${item.stock}</td>`;
+                        searchBody.appendChild(row);
+                        searchResults.style.display = 'block';
+                    }
+                });
+            }
+        }
+
+        function addOrder(itemName, quantity, orderReason) {
+            orders.push({ itemName, quantity, orderReason });
+            updateOrdersPage();
+        }
+
+        function updateOrdersPage() {
+            const orderList = document.getElementById('order-list');
+            const dashboardOrders = document.getElementById('dashboard-orders');
+            orderList.innerHTML = '';
+            dashboardOrders.innerHTML = '';
+
+            orders.forEach(order => {
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <p><strong>Item:</strong> ${order.itemName}</p>
+                    <p><strong>Quantity:</strong> ${order.quantity}</p>
+                    <p><strong>Reason:</strong> ${order.orderReason}</p>
+                `;
+                orderList.appendChild(card);
+                dashboardOrders.appendChild(card.cloneNode(true));
+            });
+        }
+
+        // Example orders for testing
+        addOrder("Surgical Masks", 50, "ICU Stock");
+        addOrder("Gloves", 200, "ER Supplies");
+    </script>
+</body>
+</html>
