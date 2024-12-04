@@ -1,3 +1,4 @@
+-- Data to populate the tables
 INSERT INTO Departments (name, location)
 VALUES
 ('Emergency Room', 'Main Hospital Building'),
